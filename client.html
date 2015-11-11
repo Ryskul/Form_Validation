@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<script type="text/javascript" src="jquery-1.11.3.min.js"></script>
+</head>
+<body>
+	<input type="text" id="phone">
+	<input type="button" id="send_phone" value="Login">
+
+	<script type="text/javascript">	
+
+		$(document).ready(function () {
+			tezUrl = "http://tez-kg-00.azurewebsites.net/v1/";
+			phone = "";
+			myCode = "";
+
+			sub_data = {app: "andr.11.22", lat:42.8719758, lng: 74.6086855, phone: phone, auth: "", channel: "+8"};
+
+
+			$("#send_phone").click(function () {
+				phone = $("#phone").val();
+				sub_data.phone = phone;
+				myCode = phone.replace("+996", "");
+
+				var login_data = {'app': 'andr.11.22', 'lat': '42.8719429', 'lng': 
+					'74.6074618', 'phone': phone};
+
+				$.ajax({
+					url: tezUrl + "login",
+					type: "POST",
+		            dataType: "json",
+		            data: JSON.stringify(login_data),
+		            contentType: "text/plain",
+					success: function (response) {
+						verify(response.verify);
+					},
+					error: function (response) {
+		    			alert("Schlecht");
+					},
+				});
+
+				
+				function verify(ver) {
+					var verify_data = {app: "andr.11.22", code: myCode,  lat: 42.8719429, lng: 74.6074618, phone: phone, verify: ver};
+
+				   	$.ajax({
+						url: tezUrl + 'verify',
+						type: 'POST',
+						dataType: 'json',
+						data: JSON.stringify(verify_data),
+						contentType: "text/plain",
+						success: function (response) {
+							 subscribe(response.auth);
+						},
+						error: function (response) {
+							console.log(response);
+							alert('Alles schlecht');
+						},
+					});
+	 			} //verify
+
+
+				function subscribe(auth) {
+				 	sub_data.auth = auth;
+				 	setInterval(function () {
+				 		$.ajax({
+					 		url: tezUrl + 'subscribe',
+						 	type: 'POST',
+						 	dataType: 'json',
+						 	data: JSON.stringify(sub_data),
+						 	contentType: "text/plain",
+
+						 	success: function (response) {
+								var jsonResponse = jQuery.parseJSON(JSON.stringify(response));
+
+								if (jsonResponse.hasOwnProperty("state")) {
+									var state = jsonResponse.state;
+									if (state.hasOwnProperty("finished")) {
+										alert("Success");
+										rate(4, "comment");
+										sub_data.channel = "+7";
+									}
+								}
+						 		console.log(response);
+							},
+							error: function (response) {
+				    			alert("Bad request");
+				    			console.log(response);
+							},
+				 		});
+				 	}, 2000);
+				} // subscribe()
+
+
+				function rate(rating, comment) {
+				 	var rate_data = {app: "andr.11.22", lat:42.8719758, lng: 74.6086855, phone: sub_data.phone, auth: sub_data.auth, "rating": rating, "comment": comment};
+
+				 	$.ajax({
+						url: tezUrl + 'rate',
+						type: 'POST',
+						dataType: 'json',
+						data: JSON.stringify(rate_data),
+						contentType: "text/plain",
+						success: function (response) {
+							alert("OK")
+						},
+						error: function (response) {
+			    			alert("NOT OK");
+			    			console.log(response);
+						},
+				 	});
+				}
+			});
+		});
+	</script>
+</body>
+</html>

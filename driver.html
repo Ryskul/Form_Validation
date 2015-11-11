@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<script type="text/javascript" src="jquery-1.11.3.min.js"></script>
+</head>
+<body>
+	<input type="text" id="phone">
+	<input type="button" id="send_phone" value="Login">
+	<div class='message'>Default</div>
+	<div><input type="button" id="call" value="Accept" style="margin-top: 20px"></div>
+	<div>
+	<input type="button" id="arrive" value="Arrived" style="margin-top: 20px">
+	<input type="button" id="cancel" value="Cancel" style="margin-top: 20px">
+	</div>
+	<div>
+	<input type="button" id="start" value="Start" style="margin-top: 20px">
+	<input type="button" id="cancel" value="Cancel" style="margin-top: 20px">
+	</div>
+	<div>
+	<input type="button" id="finish" value="Finish" style="margin-top: 20px">
+	</div>
+	
+
+	<script type="text/javascript">	
+
+		$(document).ready(function () {
+			tezUrl = "http://tez-kg-00.azurewebsites.net/v1/";
+			phone = "";
+			myCode = "";
+
+			sub_data = {app: "andr.11.22", lat:42.8719758, lng: 74.6086855, phone: phone, auth: "", channel: "+9"};
+
+
+			$("#send_phone").click(function () {
+				phone = $("#phone").val();
+				sub_data.phone = phone;
+				myCode = phone.replace("+996", "");
+
+				var login_data = {'app': 'andr.11.22', 'lat': '42.8719429', 'lng': 
+				'74.6074618', 'phone': phone};
+
+				$.ajax({
+					url: tezUrl + "login",
+					type: "POST",
+		            dataType: "json",
+		            data: JSON.stringify(login_data),
+		            contentType: "text/plain",
+					success: function (response) {
+						verify(response.verify);
+					},
+					error: function (response) {
+		    			alert("Schlecht");
+					},
+				});
+
+				
+				function verify(ver) {
+					var verify_data = {app: "andr.11.22", code: myCode,  lat: 42.8719429, lng: 74.6074618, phone: phone, verify: ver};
+
+				   	$.ajax({
+						url: tezUrl + 'verify',
+						type: 'POST',
+						dataType: 'json',
+						data: JSON.stringify(verify_data),
+						contentType: "text/plain",
+						success: function (response) {
+							 subscribe(response.auth);
+						},
+						error: function (response) {
+							console.log(response);
+							alert('Alles schlecht');
+						},
+					});
+	 			} //verify
+
+
+				function subscribe(auth) {
+					
+				 	sub_data.auth = auth;
+				 	setInterval(function () {
+				 		
+				 			
+
+				 		$.ajax({
+					 		url: tezUrl + 'subscribe',
+						 	type: 'POST',
+						 	dataType: 'json',
+						 	data: JSON.stringify(sub_data),
+						 	contentType: "text/plain",
+
+						 	success: function (response) {
+								var jsonResponse = jQuery.parseJSON(JSON.stringify(response));
+
+								if (jsonResponse.hasOwnProperty("state")) {
+									var state = jsonResponse.state;
+
+									if (state.hasOwnProperty("finished")) {
+										request("rate");
+										$(".message").html("Rated");
+									}
+
+									else if (state.hasOwnProperty("started")) {
+										request("finish");
+										$(".message").html("Finished");
+									}
+
+									else if (state.hasOwnProperty("arrived")) {
+										request("start");
+										$(".message").html("Started");
+									}
+
+									else if (state.hasOwnProperty("accepted")) {
+										request("arrive");
+										$(".message").html("Arrived");
+									}
+
+									else if (state.hasOwnProperty("requested")) {
+
+
+										var ps = state.passenger;
+
+										if (ps.phone == "+996200") {
+											request("answer");
+											
+										$(".message").html("Accepted");
+				 						
+										}
+									}
+								}
+						 		console.log(response);
+						 		
+							},
+							error: function (response) {
+				    			alert("Bad request");
+				    			console.log(response);
+							},
+				 		});
+
+				 	}, 2000);
+				} // subscribe()
+
+					function request(api){
+						var answer_data = {phone: sub_data.phone, auth: sub_data.auth, channel: sub_data.channel,lat: 42.8719429, lng: 74.6074618};
+
+						$.ajax({
+							url: tezUrl + api,
+							type: 'POST',
+							dataType: 'json',
+							data: JSON.stringify(answer_data),
+							contentType: "text/plain",
+							success: function (response) {
+								
+							},
+							error: function (response) {
+				    			alert("NOT OK");
+				    			console.log(response);
+							},
+					 	});
+					}
+				});
+		});
+	</script>
+</body>
+</html>
